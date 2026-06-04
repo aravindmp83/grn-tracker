@@ -2,10 +2,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 /* Global Style Settings */
-html, body, [data-testid="stAppViewContainer"] {
+html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
     font-family: 'Outfit', sans-serif !important;
     background: linear-gradient(135deg, #0e1117 0%, #1a0f1d 100%) !important;
-    color: #e0e0e6 !important;
+    color: #ffffff !important;
+}
+
+/* Global Text Visibility Force Overrides */
+h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4, .stMarkdown h5, .stMarkdown h6 {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+}
+
+p, li, span, label, div, [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li {
+    color: #ffffff !important;
 }
 
 /* Sidebar Custom Styling */
@@ -13,6 +23,10 @@ html, body, [data-testid="stAppViewContainer"] {
     background-color: rgba(26, 15, 29, 0.95) !important;
     border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
     backdrop-filter: blur(10px);
+}
+
+[data-testid="stSidebar"] *, [data-testid="stSidebar"] div, [data-testid="stSidebar"] span, [data-testid="stSidebar"] p {
+    color: #ffffff !important;
 }
 
 /* Glassmorphism Cards */
@@ -38,6 +52,7 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stMetricValue"] {
     font-size: 2.5rem !important;
     font-weight: 700 !important;
+    color: #ffffff !important;
     background: linear-gradient(90deg, #ff7e5f, #feb47b, #db2777) !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
@@ -47,8 +62,8 @@ html, body, [data-testid="stAppViewContainer"] {
     font-size: 0.9rem !important;
     text-transform: uppercase !important;
     letter-spacing: 0.1em !important;
-    color: #a0aec0 !important;
-    font-weight: 500 !important;
+    color: #ffffff !important; /* Pure white metric labels for high visibility */
+    font-weight: 600 !important;
 }
 
 /* Custom Buttons - Premium Gradients */
@@ -86,7 +101,7 @@ html, body, [data-testid="stAppViewContainer"] {
 [data-testid="stExpander"] summary {
     font-weight: 600 !important;
     font-size: 1.05rem !important;
-    color: #e2e8f0 !important;
+    color: #ffffff !important; /* Pure white expander headers */
     padding: 12px 16px !important;
 }
 
@@ -95,7 +110,22 @@ html, body, [data-testid="stAppViewContainer"] {
     background: rgba(255, 255, 255, 0.02) !important;
 }
 
+.stDetails p, [data-testid="stExpander"] p, [data-testid="stExpander"] span {
+    color: #ffffff !important; /* Force expander contents to be pure white */
+}
+
 /* Styled Table Header & Rows (st.table overrides) */
+div[data-testid="stTable"] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+    margin-bottom: 20px !important;
+}
+
 div[data-testid="stTable"] table {
     border-collapse: separate !important;
     border-spacing: 0 4px !important;
@@ -135,6 +165,46 @@ div[data-testid="stTable"] td {
 
 [data-baseweb="select"] * {
     color: #ffffff !important; /* High contrast text inside dropdown selection */
+}
+
+/* Custom styled Dropdown menu to guarantee white-on-dark contrast and prevent white-on-white */
+div[data-baseweb="popover"] {
+    background-color: #1a0f1d !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+}
+
+div[data-baseweb="popover"] ul {
+    background-color: #1a0f1d !important;
+}
+
+div[data-baseweb="popover"] li {
+    color: #ffffff !important;
+    background-color: #1a0f1d !important;
+}
+
+div[data-baseweb="popover"] li:hover {
+    background-color: rgba(219, 39, 119, 0.15) !important;
+    color: #ffffff !important;
+}
+
+div[data-baseweb="popover"] * {
+    color: #ffffff !important;
+}
+
+/* Ensure TextInputs and TextAreas are highly visible with white fonts */
+.stTextInput input, [data-testid="stTextInput"] input {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 8px !important;
+}
+
+.stTextArea textarea, [data-testid="stTextArea"] textarea {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 8px !important;
 }
 
 /* Style file uploads and inputs */

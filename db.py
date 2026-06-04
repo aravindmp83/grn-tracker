@@ -608,3 +608,154 @@ def sync_ho_pendency_data(df: pd.DataFrame) -> tuple:
         raise e
     finally:
         conn.close()
+
+def authenticate_user(user_id: str, password_input: str):
+    """
+    Unified authentication function. Detects the role based on the user_id:
+    1. Management users: Checked in management_users.
+    2. Vendor users: Checked in vendor_users.
+    3. Store managers: Checked in grn_records (sites).
+    
+    Returns a dict with 'role' and details, or None on failure, or {'error': 'invalid_password'}
+    """
+    if not user_id or not password_input:
+        return None
+        
+    clean_id = user_id.strip()
+    clean_pwd = password_input.strip()
+    
+    conn = get_db_connection()
+    try:
+        # Create store_users table if not exists
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS store_users (
+                store_code TEXT PRIMARY KEY,
+                password TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+        
+        cursor = conn.cursor()
+        
+        # 1. Check management users (case-insensitive username)
+        cursor.execute(
+            "SELECT role, territory, name, password FROM management_users WHERE LOWER(username) = ?",
+            (clean_id.lower(),)
+        )
+        mgmt_row = cursor.fetchone()
+        if mgmt_row:
+            if mgmt_row['password'] == clean_pwd:
+                return {
+                    "role": "management",
+                    "username": clean_id.lower(),
+                    "management_role": mgmt_row['role'],
+                    "management_territory": mgmt_row['territory'],
+                    "name": mgmt_row['name']
+                }
+            else:
+                return {"error": "invalid_password"}
+                
+        # 2. Check vendor users (case-insensitive vendor code)
+        cursor.execute(
+            "SELECT password FROM vendor_users WHERE UPPER(vendor_code) = ?",
+            (clean_id.upper(),)
+        )
+        vendor_row = cursor.fetchone()
+        if vendor_row:
+            if vendor_row['password'] == clean_pwd:
+                return {
+                    "role": "vendor",
+                    "vendor_code": clean_id.upper()
+                }
+            else:
+                return {"error": "invalid_password"}
+                
+        # 3. Check store managers
+        # Check custom store manager password first
+        cursor.execute(
+            "SELECT password FROM store_users WHERE UPPER(store_code) = ?",
+            (clean_id.upper(),)
+        )
+        store_user_row = cursor.fetchone()
+        
+        # Check if store exists at all in grn_records
+        cursor.execute(
+            "SELECT 1 FROM grn_records WHERE UPPER(site) = ? LIMIT 1",
+            (clean_id.upper(),)
+        )
+        store_exists = cursor.fetchone() is not None
+        
+        if store_exists:
+            if store_user_row:
+                if store_user_row['password'] == clean_pwd:
+                    return {
+                        "role": "store_manager",
+                        "store_code": clean_id.upper()
+                    }
+                else:
+                    return {"error": "invalid_password"}
+            else:
+                # Default password is the store code itself (case-insensitive)
+                if clean_pwd.upper() == clean_id.upper():
+                    return {
+                        "role": "store_manager",
+                        "store_code": clean_id.upper()
+                    }
+                else:
+                    return {"error": "invalid_password"}
+                    
+        # No user found
+        return None
+    except sqlite3.Error as e:
+        print(f"Database error in authenticate_user: {e}")
+        return None
+    finally:
+        conn.close()
+
+def update_management_password(username: str, new_password: str) -> bool:
+    """
+    Updates the password for a management user.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE management_users SET password = ? WHERE LOWER(username) = ?",
+            (new_password, username.strip().lower())
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    except sqlite3.Error as e:
+        print(f"Database error in update_management_password: {e}")
+        return False
+    finally:
+        conn.close()
+
+def update_store_password(store_code: str, new_password: str) -> bool:
+    """
+    Updates the custom password for a store manager.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS store_users (
+                store_code TEXT PRIMARY KEY,
+                password TEXT NOT NULL
+            )
+            """
+        )
+        cursor.execute(
+            "INSERT OR REPLACE INTO store_users (store_code, password) VALUES (?, ?)",
+            (store_code.strip().upper(), new_password)
+        )
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error in update_store_password: {e}")
+        return False
+    finally:
+        conn.close()

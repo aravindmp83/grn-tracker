@@ -84,17 +84,20 @@ if st.session_state.logged_in:
     if st.session_state.user_role == "store_manager":
         # Store Manager Pages
         pg = st.navigation({
-            "Store Operations": [dashboard_page, history_page]
+            "Store Operations": [dashboard_page, history_page],
+            "Settings": [vendor_password_page]
         })
     elif st.session_state.user_role == "vendor":
         # Vendor Pages
         pg = st.navigation({
-            "Vendor Operations": [vendor_dashboard_page, vendor_password_page]
+            "Vendor Operations": [vendor_dashboard_page],
+            "Settings": [vendor_password_page]
         })
     elif st.session_state.user_role == "management":
         # Management Pages
         pg = st.navigation({
-            "Executive Reports": [management_dashboard_page]
+            "Executive Reports": [management_dashboard_page],
+            "Settings": [vendor_password_page]
         })
     else:
         st.session_state.logged_in = False

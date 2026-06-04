@@ -16,126 +16,127 @@ with col2:
         unsafe_allow_html=True
     )
     
-    # Tabs for different portals
-    tab1, tab2, tab3 = st.tabs(["🏪 Store Manager", "🏭 Vendor Portal", "💼 Management"])
+    # Tabs for Sign In and Change Password
+    tab1, tab2 = st.tabs(["🚪 Sign In", "🔑 Change Password"])
     
-    # Store Manager Login Tab
+    # Unified Sign In Tab
     with tab1:
-        with st.form("store_login_form", clear_on_submit=False):
-            store_code_input = st.text_input(
-                "Store Code (e.g. T0AH)", 
-                placeholder="Enter Store Code", 
-                help="Enter your alphanumeric Store Code"
+        with st.form("unified_login_form", clear_on_submit=False):
+            user_id_input = st.text_input(
+                "Username or ID (e.g. sumit, T0AH, 32612015)", 
+                placeholder="Enter Username, Store Code, or Vendor Code", 
+                help="Your login ID is either your Store Code, Vendor Code, or Management Username"
             )
             password_input = st.text_input(
                 "Password", 
                 type="password", 
                 placeholder="Enter Password", 
-                help="Default password matches your Store Code"
+                help="Enter your password"
             )
             
-            submit_store = st.form_submit_button("Sign In as Manager")
+            submit_login = st.form_submit_button("Sign In")
             
-            if submit_store:
-                if not store_code_input.strip():
-                    st.error("Please enter a Store Code.")
+            if submit_login:
+                if not user_id_input.strip():
+                    st.error("Please enter your Username or ID.")
                 elif not password_input:
                     st.error("Please enter your password.")
                 else:
-                    clean_store = store_code_input.strip().upper()
-                    clean_password = password_input.strip()
+                    user_id = user_id_input.strip()
+                    password = password_input.strip()
                     
-                    # Password matches Store Code exactly
-                    if clean_password.upper() != clean_store:
-                        st.error("Authentication failed: Password must exactly match the Store Code.")
-                    else:
-                        exists = db.verify_store_code(clean_store)
-                        if exists:
-                            st.session_state.logged_in = True
-                            st.session_state.user_role = "store_manager"
-                            st.session_state.store_code = clean_store
-                            st.toast(f"Logged in as Store Manager {clean_store}! 🏪", icon="✅")
-                            st.rerun()
+                    # Authenticate user using unified DB check
+                    auth_info = db.authenticate_user(user_id, password)
+                    
+                    if auth_info:
+                        if isinstance(auth_info, dict) and auth_info.get("error") == "invalid_password":
+                            st.error("Authentication failed: Incorrect password.")
                         else:
-                            st.error(f"Authentication failed: Store Code '{clean_store}' not found in database.")
+                            st.session_state.logged_in = True
+                            st.session_state.user_role = auth_info['role']
                             
-    # Vendor Login Tab
+                            # Set role-specific session states
+                            if auth_info['role'] == "store_manager":
+                                st.session_state.store_code = auth_info['store_code']
+                                st.toast(f"Logged in as Store Manager {auth_info['store_code']}! 🏪", icon="✅")
+                            elif auth_info['role'] == "vendor":
+                                st.session_state.vendor_code = auth_info['vendor_code']
+                                st.toast(f"Logged in as Vendor {auth_info['vendor_code']}! 🏭", icon="✅")
+                            elif auth_info['role'] == "management":
+                                st.session_state.management_username = auth_info['username']
+                                st.session_state.management_role = auth_info['management_role']
+                                st.session_state.management_territory = auth_info['management_territory']
+                                st.toast(f"Welcome back, {auth_info['name']}! 💼", icon="✅")
+                                
+                            st.rerun()
+                    else:
+                        st.error("Authentication failed: Username or ID not found in system.")
+                        
+    # Unified Change Password Tab
     with tab2:
-        with st.form("vendor_login_form", clear_on_submit=False):
-            vendor_code_input = st.text_input(
-                "Vendor Code (e.g. 32612015)", 
-                placeholder="Enter Vendor Code", 
-                help="Check your PO details for the vendor code"
+        with st.form("change_pwd_login_form", clear_on_submit=True):
+            user_id_pwd = st.text_input(
+                "Username or ID", 
+                placeholder="Enter Username, Store Code, or Vendor Code",
+                key="change_pwd_id_input"
             )
-            vendor_password_input = st.text_input(
-                "Password", 
+            current_pwd = st.text_input(
+                "Current Password", 
                 type="password", 
-                placeholder="Enter Password", 
-                help="Default password matches your Vendor Code"
+                placeholder="Enter your current password"
+            )
+            new_pwd = st.text_input(
+                "New Password", 
+                type="password", 
+                placeholder="Enter new password (min 4 characters)"
+            )
+            confirm_pwd = st.text_input(
+                "Confirm New Password", 
+                type="password", 
+                placeholder="Retype new password"
             )
             
-            submit_vendor = st.form_submit_button("Sign In as Vendor")
+            submit_change = st.form_submit_button("Update Password")
             
-            if submit_vendor:
-                if not vendor_code_input.strip():
-                    st.error("Please enter a Vendor Code.")
-                elif not vendor_password_input:
-                    st.error("Please enter your password.")
+            if submit_change:
+                if not user_id_pwd.strip():
+                    st.error("Please enter your Username or ID.")
+                elif not current_pwd:
+                    st.error("Please enter your current password.")
+                elif not new_pwd:
+                    st.error("Please enter a new password.")
+                elif new_pwd != confirm_pwd:
+                    st.error("Validation error: New Password and Confirm Password fields do not match.")
+                elif len(new_pwd.strip()) < 4:
+                    st.error("Validation error: Password must be at least 4 characters long.")
                 else:
-                    clean_vendor = vendor_code_input.strip().upper()
-                    clean_pwd = vendor_password_input.strip()
+                    user_id = user_id_pwd.strip()
+                    curr_p = current_pwd.strip()
+                    new_p = new_pwd.strip()
                     
-                    # Verify vendor credentials in DB
-                    valid = db.verify_vendor_login(clean_vendor, clean_pwd)
-                    if valid:
-                        st.session_state.logged_in = True
-                        st.session_state.user_role = "vendor"
-                        st.session_state.vendor_code = clean_vendor
-                        st.toast(f"Logged in as Vendor {clean_vendor}! 🏭", icon="✅")
-                        st.rerun()
-                    else:
-                        st.error("Authentication failed: Invalid Vendor Code or Password.")
-                        
-    # Management Login Tab
-    with tab3:
-        with st.form("mgmt_login_form", clear_on_submit=False):
-            mgmt_user_input = st.text_input(
-                "Username (e.g. cm_chennai or rm_north)",
-                placeholder="Enter Username",
-                help="Management username"
-            )
-            mgmt_pwd_input = st.text_input(
-                "Password",
-                type="password",
-                placeholder="Enter Password",
-                help="Default password matches your Username"
-            )
-            
-            submit_mgmt = st.form_submit_button("Sign In as Executive")
-            
-            if submit_mgmt:
-                if not mgmt_user_input.strip():
-                    st.error("Please enter a Username.")
-                elif not mgmt_pwd_input:
-                    st.error("Please enter your password.")
-                else:
-                    clean_user = mgmt_user_input.strip().lower()
-                    clean_pwd = mgmt_pwd_input.strip()
+                    # 1. Verify credentials first
+                    auth_info = db.authenticate_user(user_id, curr_p)
                     
-                    # Verify management credentials in DB
-                    mgmt_info = db.verify_management_login(clean_user, clean_pwd)
-                    if mgmt_info:
-                        st.session_state.logged_in = True
-                        st.session_state.user_role = "management"
-                        st.session_state.management_username = clean_user
-                        st.session_state.management_role = mgmt_info['role']
-                        st.session_state.management_territory = mgmt_info['territory']
+                    if auth_info and not (isinstance(auth_info, dict) and auth_info.get("error") == "invalid_password"):
+                        role = auth_info['role']
+                        success = False
                         
-                        st.toast(f"Welcome back, {mgmt_info['name']}! 💼", icon="✅")
-                        st.rerun()
+                        # 2. Update password in database based on role
+                        if role == "management":
+                            success = db.update_management_password(user_id, new_p)
+                        elif role == "vendor":
+                            success = db.update_vendor_password(user_id, new_p)
+                        elif role == "store_manager":
+                            success = db.update_store_password(user_id, new_p)
+                            
+                        if success:
+                            st.success("🎉 Password updated successfully! You can now switch to the 'Sign In' tab.")
+                            st.toast("Credentials updated! 💾", icon="✅")
+                        else:
+                            st.error("Failed to update password in database. Please try again.")
                     else:
-                        st.error("Authentication failed: Invalid Username or Password.")
-                        
+                        st.error("Authentication failed: Incorrect Username/ID or Current Password.")
+
     # Bottom branding/legal footer
     st.markdown(
         """
