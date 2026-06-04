@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Streamlit specific
+.streamlit/secrets.toml
+.streamlit/
+*.log
+
+# Databases
+*.sqlite3
+*.db
+trends_grn.db
+
+# Virtual environments
+venv/
+env/
+.env
+
+# MacOS
+.DS_Store
+
+# Temporary uploads/invoices
+invoices/
+*.pdf
+*.png
+*.jpg
