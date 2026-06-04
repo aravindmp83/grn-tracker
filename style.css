@@ -1,0 +1,293 @@
+/* Import Modern Typography */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+/* Global Style Settings */
+html, body, [data-testid="stAppViewContainer"] {
+    font-family: 'Outfit', sans-serif !important;
+    background: linear-gradient(135deg, #0e1117 0%, #1a0f1d 100%) !important;
+    color: #e0e0e6 !important;
+}
+
+/* Sidebar Custom Styling */
+[data-testid="stSidebar"] {
+    background-color: rgba(26, 15, 29, 0.95) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(10px);
+}
+
+/* Glassmorphism Cards */
+.glass-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 24px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3) !important;
+    margin-bottom: 20px !important;
+    transition: all 0.3s ease-in-out !important;
+}
+
+.glass-card:hover {
+    transform: translateY(-2px) !important;
+    border-color: rgba(219, 39, 119, 0.4) !important; /* Ruby accent hover */
+    box-shadow: 0 12px 40px 0 rgba(219, 39, 119, 0.15) !important;
+}
+
+/* Metric Cards Container */
+[data-testid="stMetricValue"] {
+    font-size: 2.5rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(90deg, #ff7e5f, #feb47b, #db2777) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+[data-testid="stMetricLabel"] {
+    font-size: 0.9rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    color: #a0aec0 !important;
+    font-weight: 500 !important;
+}
+
+/* Custom Buttons - Premium Gradients */
+.stButton > button {
+    background: linear-gradient(90deg, #db2777 0%, #ea580c 100%) !important;
+    color: white !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 24px !important;
+    box-shadow: 0 4px 15px rgba(219, 39, 119, 0.3) !important;
+    transition: all 0.3s ease !important;
+    width: 100% !important;
+}
+
+.stButton > button:hover {
+    transform: scale(1.02) !important;
+    box-shadow: 0 6px 20px rgba(234, 88, 12, 0.5) !important;
+}
+
+.stButton > button:active {
+    transform: scale(0.98) !important;
+}
+
+/* Expander custom styling to look like nice cards */
+.stDetails, [data-testid="stExpander"] {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    overflow: hidden !important;
+}
+
+[data-testid="stExpander"] summary {
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    color: #e2e8f0 !important;
+    padding: 12px 16px !important;
+}
+
+[data-testid="stExpander"] summary:hover {
+    color: #db2777 !important;
+    background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Styled Table Header & Rows (st.table overrides) */
+div[data-testid="stTable"] table {
+    border-collapse: separate !important;
+    border-spacing: 0 4px !important;
+    width: 100% !important;
+}
+
+div[data-testid="stTable"] th {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important; /* Pure white headers */
+    font-weight: 700 !important;
+    border: none !important;
+    padding: 12px 14px !important;
+    text-transform: uppercase !important;
+    font-size: 0.85rem !important;
+    letter-spacing: 0.05em !important;
+}
+
+div[data-testid="stTable"] td {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding: 10px 14px !important;
+    color: #ffffff !important; /* Pure white text for readability */
+}
+
+/* Ensure all text labels and select boxes are highly visible */
+.stSelectbox label, .stSelectbox p, [data-testid="stWidgetLabel"] p {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+}
+
+.stSelectbox div[data-baseweb="select"] {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-baseweb="select"] * {
+    color: #ffffff !important; /* High contrast text inside dropdown selection */
+}
+
+/* Style file uploads and inputs */
+[data-testid="stFileUploader"] {
+    background: rgba(255, 255, 255, 0.01) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+}
+
+/* Centered Form Layout for Login Page */
+.login-container {
+    max-width: 420px;
+    margin: 40px auto 10px auto;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+    text-align: center;
+}
+
+.login-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    background: linear-gradient(90deg, #db2777 0%, #ea580c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.login-subtitle {
+    color: #a0aec0;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+/* Styled text area */
+[data-testid="stTextArea"] textarea {
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+    border-radius: 8px !important;
+}
+
+[data-testid="stTextArea"] textarea:focus {
+    border-color: #db2777 !important;
+    box-shadow: 0 0 0 1px #db2777 !important;
+}
+
+/* Logo brand banner styling */
+.brand-banner {
+    background: linear-gradient(90deg, rgba(219,39,119,0.15) 0%, rgba(234,88,12,0.15) 100%);
+    border-left: 5px solid #db2777;
+    padding: 16px 20px;
+    border-radius: 0 10px 10px 0;
+    margin-bottom: 30px;
+}
+
+/* Custom Status Badges */
+.badge-success {
+    background-color: rgba(16, 185, 129, 0.1) !important;
+    color: #10b981 !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+}
+
+.badge-pending {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    color: #f59e0b !important;
+    border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+}
+
+.badge-not-received {
+    background-color: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    font-size: 0.8rem !important;
+}
+
+/* Pulsing highlight badge for urgent vendor invoices */
+.badge-requested {
+    background-color: rgba(239, 68, 68, 0.2) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    display: inline-block !important;
+    animation: alert-pulse 2s infinite !important;
+}
+
+/* Warnings/Complaints Box styling */
+.complaint-card {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.2) !important;
+    border-radius: 10px !important;
+    padding: 15px !important;
+    margin: 10px 0 !important;
+    color: #fca5a5 !important;
+}
+
+.partial-card {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border: 1px solid rgba(245, 158, 11, 0.2) !important;
+    border-radius: 10px !important;
+    padding: 15px !important;
+    margin: 10px 0 !important;
+    color: #fcd34d !important;
+}
+
+.badge-complaint {
+    background-color: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+}
+
+.badge-partial {
+    background-color: rgba(245, 158, 11, 0.15) !important;
+    color: #f59e0b !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    font-size: 0.8rem !important;
+}
+
+@keyframes alert-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
