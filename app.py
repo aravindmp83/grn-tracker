@@ -76,7 +76,7 @@ login_page = st.Page("pages/login.py", title="Portal Sign In", icon="🔒")
 dashboard_page = st.Page("pages/dashboard.py", title="Pending GRNs", icon="📊")
 history_page = st.Page("pages/history.py", title="GRN History", icon="📜")
 vendor_dashboard_page = st.Page("pages/vendor_dashboard.py", title="PO Orders & Invoices", icon="📋")
-vendor_password_page = st.Page("pages/vendor_password.py", title="Change Password", icon="🔑")
+vendor_password_page = st.Page("pages/change_password.py", title="Change Password", icon="🔑")
 management_dashboard_page = st.Page("pages/management_dashboard.py", title="Territory Performance", icon="📈")
 
 # 6. Run Navigation Logic based on Auth and Role
