@@ -97,7 +97,7 @@ danger_grns_count = len([r for r in records if r['days'] > 60])
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    st.metric(label="Pending GRNs in Territory", value=total_pending)
+    st.metric(label="Pending GRN Items", value=total_pending)
     st.markdown('</div>', unsafe_allow_html=True)
 with col2:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
@@ -105,7 +105,7 @@ with col2:
     st.markdown('</div>', unsafe_allow_html=True)
 with col3:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-    danger_label = "🚨 Danger GRNs (>60d)" if danger_grns_count > 0 else "Danger GRNs (>60d)"
+    danger_label = "🚨 Danger Items (>60d)" if danger_grns_count > 0 else "Danger Items (>60d)"
     st.metric(
         label=danger_label, 
         value=danger_grns_count,
@@ -122,123 +122,101 @@ else:
     # Sort DataFrame: 
     # 1. Primary: Ageing bucket rank (1 = >90 days, 4 = <30 days)
     # 2. Secondary: Days (descending, oldest first within bucket)
-    # 3. Tertiary: Site store code (ascending)
-    # 4. Quaternary: PO number (ascending)
+    # 3. Tertiary: PO number (ascending)
     df['bucket_rank'] = df['days'].apply(get_bucket_rank)
     df = df.sort_values(
-        by=['bucket_rank', 'days', 'site', 'po_number'], 
-        ascending=[True, False, True, True]
+        by=['bucket_rank', 'days', 'po_number'], 
+        ascending=[True, False, True]
     ).reset_index(drop=True)
     
-    # 2. Breakdowns Row
-    st.markdown("### 📊 Territory Breakdowns")
-    breakdown_col1, breakdown_col2 = st.columns(2)
+    # 2. Interactive Detail List
+    st.markdown("### 🔍 Territory Pending POs")
     
-    with breakdown_col1:
-        st.markdown('<div class="glass-card" style="min-height: 250px;">', unsafe_allow_html=True)
-        st.markdown("##### 🏪 Pending GRNs by Store")
+    # Apply PO grouping
+    grouped_pos = {}
+    for _, r in df.iterrows():
+        if r['po_number'] not in grouped_pos:
+            grouped_pos[r['po_number']] = []
+        grouped_pos[r['po_number']].append(r.to_dict())
         
-        # Group by Site
-        store_group = df.groupby(['site', 'site_name']).size().reset_index(name='count').sort_values(by='count', ascending=False)
-        store_group.columns = ['Store Code', 'Store Name', 'Pending Lines']
-        
-        # Display as styled table
-        st.dataframe(store_group, hide_index=True, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with breakdown_col2:
-        st.markdown('<div class="glass-card" style="min-height: 250px;">', unsafe_allow_html=True)
-        st.markdown("##### 📈 Pending GRNs by Receipt Status")
-        
-        # Group by goods status
-        status_group = df.groupby('goods_received_status').size().reset_index(name='count').sort_values(by='count', ascending=False)
-        status_group.columns = ['Receipt Status', 'Pending Lines']
-        
-        st.dataframe(status_group, hide_index=True, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    # 3. Interactive Detail List
-    st.markdown("### 🔍 Territory Pending Details")
+    st.markdown(f"Showing **{len(grouped_pos)}** Pending POs in your territory:")
     
-    # Site Filters
-    unique_sites = sorted(list(df['site'].unique()))
-    selected_site = st.selectbox("Filter by Store Code", options=["All Stores"] + unique_sites)
-    
-    # Filter by receipt status
-    unique_statuses = sorted(list(df['goods_received_status'].unique()))
-    selected_status = st.selectbox("Filter by Receipt Status", options=["All Statuses"] + unique_statuses)
-    
-    # Apply filters (Note: sorting is already preserved from df)
-    filtered_df = df
-    if selected_site != "All Stores":
-        filtered_df = filtered_df[filtered_df['site'] == selected_site]
-    if selected_status != "All Statuses":
-        filtered_df = filtered_df[filtered_df['goods_received_status'] == selected_status]
+    for po_number, items in grouped_pos.items():
+        r = items[0]  # Reference row for header
         
-    st.markdown(f"Showing **{len(filtered_df)}** records matching filter criteria:")
-    
-    # Loop and display PO details
-    for idx, r in filtered_df.iterrows():
-        # Status labels mapping
-        status_label = r['goods_received_status']
-        badge_html = ""
+        max_days = max(item['days'] for item in items)
+        ageing_badge = " [🚨 Danger: >60 Days]" if max_days > 60 else ""
         
-        # Ageing status flags
-        ageing_badge = " [🚨 Danger: >60 Days]" if r['days'] > 60 else ""
-        
-        if status_label == 'No':
+        # Check overall status
+        status_set = set(item['goods_received_status'] for item in items)
+        if 'No' in status_set:
+            status_label = "Goods NOT Received"
             badge_html = '<span class="badge-not-received">❌ Goods NOT Received</span>'
-        elif status_label == 'Partially received':
-            badge_html = '<span class="badge-partial">⚠️ Partially Received</span>'
-        elif status_label == 'Have complaint in the work done':
-            badge_html = '<span class="badge-complaint">🚨 Complaint Logged</span>'
+        elif 'Partially received' in status_set or 'Have complaint in the work done' in status_set:
+            status_label = "Issues Reported"
+            badge_html = '<span class="badge-partial">⚠️ Issues Reported</span>'
         else:
+            status_label = "Pending Store GRN"
             badge_html = f'<span class="badge-pending">⏳ Status: {status_label}</span>'
             
         expander_title = (
-            f"🏪 Store: {r['site']} | PO: {r['po_number']} | "
-            f"Article: {r['article']} (Qty: {r['quantity']}){ageing_badge} | {status_label}"
+            f"📄 PO: {po_number} | "
+            f"Items: {len(items)}{ageing_badge} | {status_label}"
         )
         
         with st.expander(expander_title):
             # Record details
             col_a, col_b, col_c = st.columns(3)
             with col_a:
-                st.write(f"**Store Name:** {r['site_name']}")
                 st.write(f"**PO Header Details:** {r['po_header_text']}")
                 st.write(f"**PO Date:** {r['po_date']}")
             with col_b:
                 st.write(f"**Vendor Name:** {r['vendor_name']} (Code: {r['vendor']})")
-                st.write(f"**Article Description:** {r['article_description']}")
                 st.write(f"**Delivery Date:** {r['delivery_dt']}")
-                st.write(f"**RMM:** {r.get('rmm', '')} | **CM:** {r.get('cm', '')}")
             with col_c:
-                st.write(f"**Net PO Value:** ₹{r['net_value']:,.2f}")
-                st.write(f"**Pending Value:** ₹{r['pending_value']:,.2f}")
-                st.write(f"**Days Ageing:** {r['days']} days ({r['ageing']})")
+                total_val = sum(item['net_value'] for item in items)
+                st.write(f"**Total Value:** ₹{total_val:,.2f}")
+                st.write(f"**Max Days Ageing:** {max_days} days")
+                
+            st.markdown("#### Store Sites & Line Items")
+            item_data = []
+            for item in items:
+                item_data.append({
+                    "Store Code": item['site'],
+                    "Store Name": item['site_name'],
+                    "Article": item['article'],
+                    "Description": item['article_description'],
+                    "Pending Qty": item['pending_qty'],
+                    "Ageing (Days)": item['days'],
+                    "Status": item['goods_received_status']
+                })
+            st.table(item_data)
                 
             # Badge Status
-            st.markdown(f"**Goods Receipt Status:** {badge_html}", unsafe_allow_html=True)
+            st.markdown(f"**Overall Status:** {badge_html}", unsafe_allow_html=True)
             
             # Conversation History View
             st.markdown("##### 💬 Comment History")
-            if isinstance(r['comments_log'], str) and r['comments_log'].strip():
-                for line in r['comments_log'].strip().split("\n"):
-                    if ":" in line:
-                        sender, text = line.split(":", 1)
-                        sender = sender.strip()
-                        text = text.strip()
-                        
-                        if sender == r['site']:
-                            avatar = "🏪"
-                        elif sender == r['vendor']:
-                            avatar = "🏭"
-                        else:
-                            avatar = "💼"
+            has_comments = False
+            for item in items:
+                if isinstance(item['comments_log'], str) and item['comments_log'].strip():
+                    has_comments = True
+                    for line in item['comments_log'].strip().split("\\n"):
+                        if ":" in line:
+                            sender, text = line.split(":", 1)
+                            sender = sender.strip()
+                            text = text.strip()
                             
-                        with st.chat_message(sender, avatar=avatar):
-                            st.write(f"**{sender}**: {text}")
-            else:
-                st.info("No comment history registered yet.")
+                            if sender == item['site']:
+                                avatar = "🏪"
+                            elif sender == item['vendor']:
+                                avatar = "🏭"
+                            else:
+                                avatar = "💼"
+                                
+                            with st.chat_message(sender, avatar=avatar):
+                                st.write(f"**{sender}** (re: {item['site']}): {text}")
+            if not has_comments:
+                st.info("No comment history registered yet for any items in this PO.")
                 
             st.markdown("<hr style='border: 0.5px solid rgba(255,255,255,0.1); margin: 5px 0;'>", unsafe_allow_html=True)

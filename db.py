@@ -207,11 +207,11 @@ def get_completed_grns(store_code: str):
     finally:
         conn.close()
 
-def update_grn_record(record_id: int, grn_number: str, invoice_file_path: str, sender: str, store_comments: str = None) -> bool:
+def update_grn_record(po_number: str, site: str, grn_number: str, invoice_file_path: str, sender: str, store_comments: str = None) -> bool:
     """
-    Updates the database record for a completed GRN entry.
+    Updates the database record for a completed GRN entry by PO Number and Site.
     Sets is_goods_received = 1, is_invoice_received = 1, store_invoice_status = 'Received', goods_received_status = 'Yes'.
-    Appends comment to comments_log.
+    Appends comment to comments_log for all matching records.
     """
     conn = get_db_connection()
     try:
@@ -225,14 +225,17 @@ def update_grn_record(record_id: int, grn_number: str, invoice_file_path: str, s
                 invoice_file_path = ?,
                 store_invoice_status = 'Received',
                 goods_received_status = 'Yes'
-            WHERE id = ?
+            WHERE po_number = ? AND UPPER(site) = ?
             """,
-            (grn_number, invoice_file_path, record_id)
+            (grn_number, invoice_file_path, po_number, site.upper())
         )
         
         # Append comments
         if store_comments and store_comments.strip():
-            append_comment_log_in_transaction(cursor, record_id, sender, store_comments.strip())
+            cursor.execute("SELECT id FROM grn_records WHERE po_number = ? AND UPPER(site) = ?", (po_number, site.upper()))
+            ids = cursor.fetchall()
+            for row in ids:
+                append_comment_log_in_transaction(cursor, row[0], sender, store_comments.strip())
             
         conn.commit()
         return True
@@ -243,11 +246,11 @@ def update_grn_record(record_id: int, grn_number: str, invoice_file_path: str, s
     finally:
         conn.close()
 
-def update_store_invoice_status(record_id: int, invoice_status: str, sender: str, store_comments: str) -> bool:
+def update_store_invoice_status(po_number: str, site: str, invoice_status: str, sender: str, store_comments: str) -> bool:
     """
     Allows a store manager to log comments and report invoice status (e.g. 'Not Received' or 'Requested')
     when the goods themselves have been received physically (goods_received_status = 'Yes').
-    Appends comments to comments_log.
+    Appends comments to comments_log for all matching records.
     """
     conn = get_db_connection()
     try:
@@ -257,14 +260,17 @@ def update_store_invoice_status(record_id: int, invoice_status: str, sender: str
             UPDATE grn_records
             SET store_invoice_status = ?,
                 goods_received_status = 'Yes'
-            WHERE id = ?
+            WHERE po_number = ? AND UPPER(site) = ?
             """,
-            (invoice_status, record_id)
+            (invoice_status, po_number, site.upper())
         )
         
         # Append comments
         if store_comments and store_comments.strip():
-            append_comment_log_in_transaction(cursor, record_id, sender, store_comments.strip())
+            cursor.execute("SELECT id FROM grn_records WHERE po_number = ? AND UPPER(site) = ?", (po_number, site.upper()))
+            ids = cursor.fetchall()
+            for row in ids:
+                append_comment_log_in_transaction(cursor, row[0], sender, store_comments.strip())
             
         conn.commit()
         return True
@@ -275,11 +281,11 @@ def update_store_invoice_status(record_id: int, invoice_status: str, sender: str
     finally:
         conn.close()
 
-def update_store_goods_received_issue(record_id: int, receipt_status: str, sender: str, store_comments: str) -> bool:
+def update_store_goods_received_issue(po_number: str, site: str, receipt_status: str, sender: str, store_comments: str) -> bool:
     """
     Logs store receipt status when goods are NOT fully received (No, Partially received, Have complaint in the work done).
     Sets is_goods_received = 0, store_invoice_status = 'Not Received'.
-    Appends comments with a status prefix to comments_log.
+    Appends comments with a status prefix to comments_log for all matching records.
     """
     conn = get_db_connection()
     try:
@@ -290,15 +296,18 @@ def update_store_goods_received_issue(record_id: int, receipt_status: str, sende
             SET goods_received_status = ?,
                 store_invoice_status = 'Not Received',
                 is_goods_received = 0
-            WHERE id = ?
+            WHERE po_number = ? AND UPPER(site) = ?
             """,
-            (receipt_status, record_id)
+            (receipt_status, po_number, site.upper())
         )
         
         # Append comments with status indicator prefix (e.g., "[Partially received] Shortage details")
         if store_comments and store_comments.strip():
             prefixed_comment = f"[{receipt_status}] {store_comments.strip()}"
-            append_comment_log_in_transaction(cursor, record_id, sender, prefixed_comment)
+            cursor.execute("SELECT id FROM grn_records WHERE po_number = ? AND UPPER(site) = ?", (po_number, site.upper()))
+            ids = cursor.fetchall()
+            for row in ids:
+                append_comment_log_in_transaction(cursor, row[0], sender, prefixed_comment)
             
         conn.commit()
         return True
@@ -342,9 +351,9 @@ def get_vendor_records(vendor_code: str):
     finally:
         conn.close()
 
-def update_vendor_invoice_and_comments(record_id: int, sender: str, vendor_invoice_path: str = None, new_comment: str = None) -> bool:
+def update_vendor_invoice_and_comments(po_number: str, vendor: str, sender: str, vendor_invoice_path: str = None, new_comment: str = None) -> bool:
     """
-    Updates the invoice file path and appends vendor remarks to the comments_log.
+    Updates the invoice file path and appends vendor remarks to the comments_log for a given PO and Vendor.
     """
     conn = get_db_connection()
     try:
@@ -353,13 +362,16 @@ def update_vendor_invoice_and_comments(record_id: int, sender: str, vendor_invoi
         # 1. Update vendor invoice path if provided
         if vendor_invoice_path is not None:
             cursor.execute(
-                "UPDATE grn_records SET vendor_invoice_path = ? WHERE id = ?",
-                (vendor_invoice_path, record_id)
+                "UPDATE grn_records SET vendor_invoice_path = ? WHERE po_number = ? AND UPPER(vendor) = ?",
+                (vendor_invoice_path, po_number, vendor.upper())
             )
             
         # 2. Append vendor comments to comments_log if provided
         if new_comment and new_comment.strip():
-            append_comment_log_in_transaction(cursor, record_id, sender, new_comment.strip())
+            cursor.execute("SELECT id FROM grn_records WHERE po_number = ? AND UPPER(vendor) = ?", (po_number, vendor.upper()))
+            ids = cursor.fetchall()
+            for row in ids:
+                append_comment_log_in_transaction(cursor, row[0], sender, new_comment.strip())
             
         conn.commit()
         return True

@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import db
+from collections import defaultdict
 
 # Check authorization (safety fallback)
 if not st.session_state.get("logged_in", False) or st.session_state.get("user_role") != "vendor":
@@ -76,18 +77,31 @@ tab_all, tab_req, tab_issues, tab_completed = st.tabs([
     "✅ Completed GRN"
 ])
 
+def group_records(record_list):
+    po_groups = defaultdict(list)
+    for row in record_list:
+        po_groups[row['po_number']].append(row)
+    return po_groups
+
 def render_po_list(po_list, display_type="all"):
-    if not po_list:
+    po_groups = group_records(po_list)
+    
+    if not po_groups:
         st.info("No purchase orders found in this category.")
         return
         
-    for r in po_list:
+    st.markdown(f"Showing **{len(po_groups)}** PO groups (Total {len(po_list)} items):")
+        
+    for po_number, items in po_groups.items():
+        r = items[0] # Representative row
+        
         # Determine status label / styling
         status_label = ""
         badge_html = ""
         
         # Ageing status flags
-        ageing_badge = " [🚨 Danger: >60 Days]" if r['days'] > 60 and r['is_goods_received'] == 0 else ""
+        max_days = max(item['days'] for item in items)
+        ageing_badge = " [🚨 Danger: >60 Days]" if max_days > 60 and r['is_goods_received'] == 0 else ""
         
         # 1. Check Goods Received Status first
         gr_status = r['goods_received_status']
@@ -114,8 +128,8 @@ def render_po_list(po_list, display_type="all"):
             badge_html = '<span class="badge-pending">⏳ Status: Pending Store GRN</span>'
             
         expander_title = (
-            f"📄 PO: {r['po_number']} | Store: {r['site']} | "
-            f"Article: {r['article']} (Qty: {r['quantity']}){ageing_badge} | {status_label}"
+            f"📄 PO: {po_number} | Store: {r['site']} | "
+            f"Items: {len(items)}{ageing_badge} | {status_label}"
         )
         
         with st.expander(expander_title):
@@ -125,12 +139,25 @@ def render_po_list(po_list, display_type="all"):
                 st.write(f"**PO Header Details:** {r['po_header_text']}")
                 st.write(f"**PO Date:** {r['po_date']}")
             with col_b:
-                st.write(f"**Article Description:** {r['article_description']}")
                 st.write(f"**Delivery Date:** {r['delivery_dt']}")
                 st.write(f"**RMM:** {r.get('rmm', '')} | **CM:** {r.get('cm', '')}")
             with col_c:
-                st.write(f"**Total Value:** ₹{r['net_value']:,.2f}")
-                st.write(f"**Days Ageing:** {r['days']} days")
+                # Sum total value across all items
+                total_val = sum(item['net_value'] for item in items)
+                st.write(f"**Total Value:** ₹{total_val:,.2f}")
+                st.write(f"**Max Days Ageing:** {max_days} days")
+                
+            st.markdown("#### Line Items")
+            item_data = []
+            for item in items:
+                item_data.append({
+                    "Article": item['article'],
+                    "Description": item['article_description'],
+                    "Store": item['site'],
+                    "Pending Qty": item['pending_qty'],
+                    "Net Value (₹)": f"{item['net_value']:,.2f}"
+                })
+            st.table(item_data)
                 
             # Badge Status
             st.markdown(f"**Current Status:** {badge_html}", unsafe_allow_html=True)
@@ -139,7 +166,7 @@ def render_po_list(po_list, display_type="all"):
             st.markdown("##### 💬 Comment History")
             if isinstance(r['comments_log'], str) and r['comments_log'].strip():
                 # Render conversation log using chat bubbles
-                for line in r['comments_log'].strip().split("\n"):
+                for line in r['comments_log'].strip().split("\\n"):
                     if ":" in line:
                         sender, text = line.split(":", 1)
                         sender = sender.strip()
@@ -171,7 +198,7 @@ def render_po_list(po_list, display_type="all"):
                 vendor_remarks = st.text_area(
                     "Issue Reporting & Comments",
                     placeholder="Enter details about your invoice delivery, corrections, or quality complaints...",
-                    key=f"v_rem_{r['id']}",
+                    key=f"v_rem_{po_number}",
                     height=100
                 )
                 
@@ -183,11 +210,11 @@ def render_po_list(po_list, display_type="all"):
                 uploaded_file = st.file_uploader(
                     "Upload Invoice Document (PDF, PNG, JPG)",
                     type=["pdf", "png", "jpg", "jpeg"],
-                    key=f"v_file_{r['id']}"
+                    key=f"v_file_{po_number}"
                 )
                 
                 # Submit changes
-                if st.button("Save Remarks & Upload Invoice", key=f"v_submit_{r['id']}", use_container_width=True):
+                if st.button("Save Remarks & Upload Invoice", key=f"v_submit_{po_number}", use_container_width=True):
                     try:
                         file_path = None
                         if uploaded_file:
@@ -195,7 +222,7 @@ def render_po_list(po_list, display_type="all"):
                             os.makedirs("invoices", exist_ok=True)
                             file_ext = os.path.splitext(uploaded_file.name)[1].lower()
                             
-                            filename = f"{r['po_number']}-{r['site']}_vendor{file_ext}"
+                            filename = f"{po_number}-{r['site']}_vendor{file_ext}"
                             file_path = os.path.join("invoices", filename)
                             
                             with open(file_path, "wb") as f:
@@ -203,7 +230,8 @@ def render_po_list(po_list, display_type="all"):
                                 
                         # Save database updates
                         success = db.update_vendor_invoice_and_comments(
-                            r['id'],
+                            po_number,
+                            vendor=vendor_code,
                             sender=vendor_code,
                             vendor_invoice_path=file_path,
                             new_comment=vendor_remarks.strip()

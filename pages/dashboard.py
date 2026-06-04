@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 import db
+from collections import defaultdict
+import pandas as pd
 
 # Check authorization (safety fallback)
 if not st.session_state.get("logged_in", False):
@@ -30,7 +32,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown('<div class="glass-card">', unsafe_allow_html=True)
     st.metric(
-        label="Pending GRNs", 
+        label="Pending GRN Line Items", 
         value=total_pending, 
         help="Count of PO lines where Goods Receipt has not been updated yet (is_goods_received == 0)"
     )
@@ -82,22 +84,30 @@ if search_query:
 else:
     filtered_records = pending_records
 
+# Group records by PO number
+po_groups = defaultdict(list)
+for row in filtered_records:
+    po_groups[row['po_number']].append(row)
+
 # Display list of pending records
-if not filtered_records:
+if not po_groups:
     if total_pending == 0:
         st.success("🎉 Outstanding! No pending GRN records found for your store.")
     else:
         st.info("No matching records found for your search query.")
 else:
-    st.markdown(f"Showing **{len(filtered_records)}** pending entries:")
+    st.markdown(f"Showing **{len(po_groups)}** PO groups (Total {len(filtered_records)} line items):")
     
     # Render interactive list of cards/expanders
-    for row in filtered_records:
+    for po_number, items in po_groups.items():
+        row = items[0] # Representative row for header and status
+        
         # Construct status displays for expander headers
         status_badges = []
         
         # Ageing threat highlights
-        if row['days'] > 60:
+        max_days = max(item['days'] for item in items)
+        if max_days > 60:
             status_badges.append("[🚨 Danger: >60 Days]")
         
         # 4-option receipt status display
@@ -118,32 +128,48 @@ else:
         status_badges_str = " " + " ".join(status_badges) if status_badges else ""
             
         expander_title = (
-            f"📄 PO: {row['po_number']} | {row['vendor_name']} | "
-            f"Article: {row['article']} (Pending Qty: {row['pending_qty']}){status_badges_str}"
+            f"📄 PO: {po_number} | {row['vendor_name']} | "
+            f"{len(items)} Item(s){status_badges_str}"
         )
         
         with st.expander(expander_title, expanded=False):
             # Display row details inside the expander
-            st.markdown("### Item Details")
+            st.markdown("### PO Details")
             
             d_col1, d_col2, d_col3 = st.columns(3)
             with d_col1:
                 st.write(f"**PO Header text:** {row['po_header_text']}")
                 st.write(f"**PO Date:** {row['po_date']}")
-                st.write(f"**Ageing:** {row['days']} days ({row['ageing']})")
             with d_col2:
-                st.write(f"**Article Description:** {row['article_description']}")
-                st.write(f"**Delivery Date:** {row['delivery_dt']}")
-                st.write(f"**RMM:** {row.get('rmm', '')} | **CM:** {row.get('cm', '')}")
+                st.write(f"**Vendor Name:** {row['vendor_name']}")
+                st.write(f"**Max Ageing:** {max_days} days")
             with d_col3:
-                st.write(f"**HSN/SAC Code:** {row['hsn_sac_code']}")
-                st.write(f"**Net PO Value:** ₹{row['net_value']:,.2f}")
+                st.write(f"**RMM:** {row.get('rmm', '')} | **CM:** {row.get('cm', '')}")
+                
+            st.markdown("#### Line Items")
+            
+            # Show items in a table
+            item_data = []
+            total_net_value = 0
+            for item in items:
+                item_data.append({
+                    "Article": item['article'],
+                    "Description": item['article_description'],
+                    "HSN/SAC": item['hsn_sac_code'],
+                    "Delivery Date": item['delivery_dt'],
+                    "Pending Qty": item['pending_qty'],
+                    "Net Value (₹)": f"{item['net_value']:,.2f}"
+                })
+                total_net_value += item['net_value']
+                
+            st.table(item_data)
+            st.write(f"**Total Net Value:** ₹{total_net_value:,.2f}")
                 
             # Conversation History View
             st.markdown("##### 💬 Comment History")
             if isinstance(row['comments_log'], str) and row['comments_log'].strip():
                 # Render conversation log using chat bubbles
-                for line in row['comments_log'].strip().split("\n"):
+                for line in row['comments_log'].strip().split("\\n"):
                     if ":" in line:
                         sender, text = line.split(":", 1)
                         sender = sender.strip()
@@ -171,10 +197,10 @@ else:
             default_gr_idx = receipt_options.index(current_gr_status) if current_gr_status in receipt_options else 0
             
             goods_received = st.radio(
-                "Are goods received?",
+                "Are goods received for this PO?",
                 options=receipt_options,
                 index=default_gr_idx,
-                key=f"goods_rec_{row['id']}"
+                key=f"goods_rec_{po_number}"
             )
             
             # Flow for NON-YES options: No, Partially received, Have complaint
@@ -185,18 +211,19 @@ else:
                 issue_remarks = st.text_area(
                     "Enter issue details and comments for the vendor",
                     placeholder="Shortage details, complaints description, or work incomplete details. Mandatory for Partially received and Complaints.",
-                    key=f"store_issue_rem_{row['id']}",
+                    key=f"store_issue_rem_{po_number}",
                     height=100
                 )
                 
-                if st.button("Save Issue Status & Comments", key=f"save_issue_{row['id']}", use_container_width=True):
+                if st.button("Save Issue Status & Comments", key=f"save_issue_{po_number}", use_container_width=True):
                     # Validation: Issue details mandatory for Partial and Complaints
                     if goods_received in ["Partially received", "Have complaint in the work done"] and not issue_remarks.strip():
                         st.error(f"Please fill out the Issue Reporting & Comments describing the discrepancy for '{goods_received}'.")
                     else:
                         # Write to database (resets is_goods_received to 0, appends comment prefixed with status)
                         success = db.update_store_goods_received_issue(
-                            row['id'], 
+                            po_number, 
+                            store_code,
                             goods_received, 
                             store_code,
                             issue_remarks.strip()
@@ -214,7 +241,7 @@ else:
                     "Is the invoice received?",
                     options=["No", "Yes"],
                     index=0 if row['store_invoice_status'] != 'Received' else 1,
-                    key=f"inv_rec_{row['id']}",
+                    key=f"inv_rec_{po_number}",
                     horizontal=True
                 )
                 
@@ -226,7 +253,7 @@ else:
                     store_remarks = st.text_area(
                         "Enter remarks or correction instructions for the vendor",
                         placeholder="State why the invoice is not received, or what corrections are required...",
-                        key=f"store_rem_{row['id']}",
+                        key=f"store_rem_{po_number}",
                         height=100
                     )
                     
@@ -238,14 +265,14 @@ else:
                             file_bytes = f.read()
                         
                         file_ext = os.path.splitext(vendor_inv)[1].lower()
-                        download_name = f"{row['po_number']}-{store_code}{file_ext}"
+                        download_name = f"{po_number}-{store_code}{file_ext}"
                         
                         st.download_button(
                             label="📥 Download Invoice",
                             data=file_bytes,
                             file_name=download_name,
                             mime="application/octet-stream",
-                            key=f"dl_vendor_{row['id']}",
+                            key=f"dl_vendor_{po_number}",
                             help=f"Downloads invoice uploaded by vendor as '{download_name}'"
                         )
                     else:
@@ -255,13 +282,14 @@ else:
                         "Report Invoice Status to Vendor Portal",
                         options=["Not Received", "Requested"],
                         index=0 if row['store_invoice_status'] == 'Not Received' else 1,
-                        key=f"status_opt_{row['id']}"
+                        key=f"status_opt_{po_number}"
                     )
                     
-                    if st.button("Save Remarks & Report Status", key=f"save_status_{row['id']}", use_container_width=True):
+                    if st.button("Save Remarks & Report Status", key=f"save_status_{po_number}", use_container_width=True):
                         # Save remarks and report status
                         success = db.update_store_invoice_status(
-                            row['id'], 
+                            po_number, 
+                            store_code,
                             invoice_status_option, 
                             store_code,
                             store_remarks.strip()
@@ -278,13 +306,13 @@ else:
                     grn_number = st.text_input(
                         "Enter GRN Number",
                         placeholder="e.g. GRN12345678",
-                        key=f"grn_num_{row['id']}"
+                        key=f"grn_num_{po_number}"
                     )
                     
                     store_remarks = st.text_area(
                         "Enter final comments/remarks (optional)",
                         placeholder="Add any final store-level remarks...",
-                        key=f"store_rem_yes_inv_{row['id']}",
+                        key=f"store_rem_yes_inv_{po_number}",
                         height=100
                     )
                     
@@ -292,11 +320,12 @@ else:
                     if grn_number.strip():
                         st.markdown("<br>", unsafe_allow_html=True)
                         
-                        if st.button("Submit GRN Update", key=f"submit_{row['id']}", use_container_width=True):
+                        if st.button("Submit GRN Update", key=f"submit_{po_number}", use_container_width=True):
                             try:
                                 # Update Database record (is_goods_received = 1, invoice path is None)
                                 success = db.update_grn_record(
-                                    row['id'], 
+                                    po_number,
+                                    store_code,
                                     grn_number.strip(), 
                                     None, 
                                     store_code,
@@ -304,7 +333,7 @@ else:
                                 )
                                 
                                 if success:
-                                    st.success(f"Successfully completed GRN for PO {row['po_number']}!")
+                                    st.success(f"Successfully completed GRN for PO {po_number}!")
                                     st.toast("GRN status updated successfully! 💾", icon="✅")
                                     st.rerun()
                                 else:
