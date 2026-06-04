@@ -67,7 +67,7 @@ p, li, span, label, div, [data-testid="stMarkdownContainer"] p, [data-testid="st
 }
 
 /* Custom Buttons - Premium Gradients */
-.stButton > button {
+.stButton > button, [data-testid="stFormSubmitButton"] > button, .stDownloadButton > button {
     background: linear-gradient(90deg, #db2777 0%, #ea580c 100%) !important;
     color: white !important;
     font-family: 'Outfit', sans-serif !important;
@@ -80,12 +80,12 @@ p, li, span, label, div, [data-testid="stMarkdownContainer"] p, [data-testid="st
     width: 100% !important;
 }
 
-.stButton > button:hover {
+.stButton > button:hover, [data-testid="stFormSubmitButton"] > button:hover, .stDownloadButton > button:hover {
     transform: scale(1.02) !important;
     box-shadow: 0 6px 20px rgba(234, 88, 12, 0.5) !important;
 }
 
-.stButton > button:active {
+.stButton > button:active, [data-testid="stFormSubmitButton"] > button:active, .stDownloadButton > button:active {
     transform: scale(0.98) !important;
 }
 
@@ -192,17 +192,17 @@ div[data-baseweb="popover"] * {
     color: #ffffff !important;
 }
 
-/* Ensure TextInputs and TextAreas are highly visible with white fonts */
+/* Ensure TextInputs and TextAreas are highly visible with black fonts */
 .stTextInput input, [data-testid="stTextInput"] input {
-    color: #ffffff !important;
-    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: #000000 !important;
+    background-color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 8px !important;
 }
 
 .stTextArea textarea, [data-testid="stTextArea"] textarea {
-    color: #ffffff !important;
-    background-color: rgba(255, 255, 255, 0.04) !important;
+    color: #000000 !important;
+    background-color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 8px !important;
 }
@@ -245,9 +245,9 @@ div[data-baseweb="popover"] * {
 
 /* Styled text area */
 [data-testid="stTextArea"] textarea {
-    background-color: rgba(255, 255, 255, 0.02) !important;
+    background-color: #ffffff !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #e2e8f0 !important;
+    color: #000000 !important;
     border-radius: 8px !important;
 }
 
