@@ -5,13 +5,27 @@ def get_backend():
     Dynamically loads either the Google Sheets backend or the SQLite backend
     based on the presence of Google credentials in Streamlit secrets.
     """
+    use_microsoft = False
     use_gsheets = False
     
     # Safely check if secrets exist
-    if hasattr(st, "secrets") and "gcp_service_account" in st.secrets and "spreadsheet_id" in st.secrets:
-        use_gsheets = True
+    if hasattr(st, "secrets"):
+        if "microsoft" in st.secrets:
+            use_microsoft = True
+        elif "gcp_service_account" in st.secrets and "spreadsheet_id" in st.secrets:
+            use_gsheets = True
 
-    if use_gsheets:
+    if use_microsoft:
+        try:
+            import db_microsoft as backend
+            # st.toast("Connected to Microsoft OneDrive ☁️")
+            return backend
+        except Exception as e:
+            print(f"Failed to load Microsoft backend: {e}")
+            print("Falling back to local SQLite backend.")
+            import db_sqlite as backend
+            return backend
+    elif use_gsheets:
         try:
             import db_gsheets as backend
             # st.toast("Connected to Google Sheets ☁️")
